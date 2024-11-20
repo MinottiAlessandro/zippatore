@@ -55,6 +55,12 @@ int main(int argc, char* argv[]) {
         int ch;
         start = clock();
         while ((ch = fgetc(f)) != EOF) {
+
+            if(ch == 0 || ch == 2 || ch > 128) {
+                printf("Error: file contains 0x00, 0x02, or non ascii char\n");
+                return -1;
+            }
+
             n[ch].key = (char) ch;
             n[ch].value++;
             n[ch].left = NULL;
@@ -69,6 +75,11 @@ int main(int argc, char* argv[]) {
         sort(n, 0);
         end = clock();
         if(option_v) total_execution_time += execution_time(start, end, "Sorting tree");
+
+        if(n[CHARSET-2].value == 0) {
+            printf("Error: file contains only 1 type of char\n");
+            return -1;
+        }
 
         start = clock();
         Node bt = build_binary_tree(n);
