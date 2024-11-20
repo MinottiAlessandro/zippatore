@@ -75,6 +75,4 @@ void get_line(FILE *file, char* buffer) {
 
         prev_char = curr_char;
     }
-
-    buffer[index] = '\1';
 }
