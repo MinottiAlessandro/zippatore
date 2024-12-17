@@ -145,7 +145,6 @@ void serialize_wrapper(Node *t, FILE *f) {
     fprintf(f, "\n\n");
 }
 
-// TODO: Problema in fase di serializzazione o deserializzazione - Stampo deadbeef senza controllare
 void serialize(Node *root, FILE *file) {
     if (root == NULL) {
         fprintf(file, "%c", '\0');
@@ -215,28 +214,24 @@ void decompress(FILE *f, Node *t, int padding, char *filename) {
     fclose(w);
 }
 
-// TODO: Problema in fase di serializzazione o deserializzazione
 Node* deserialize(char **buffer) {
     if (**buffer == '\0'){
         (*buffer)++;
         return NULL;
-    } else if(**buffer == '\1') {
-        Node *node = (Node*)malloc(sizeof(Node));
+    }
+    
+    Node *node = (Node*)malloc(sizeof(Node));
+    if(**buffer == '\1') {
         strcpy(node->key, "\xde\xad\xbe\xef\0");
-        (*buffer)++;
-        node->left = deserialize(buffer);
-        node->right = deserialize(buffer);
-
-        return node;
     } else {
         (*buffer)++;
-        Node *node = (Node*)malloc(sizeof(Node));
         node->key[0] = **buffer;
-        (*buffer)++;
-        node->left = deserialize(buffer);
-        node->right = deserialize(buffer);
-
-        return node;
     }
+    
+    (*buffer)++;
+    node->left = deserialize(buffer);
+    node->right = deserialize(buffer);
+
+    return node;
 }
 
