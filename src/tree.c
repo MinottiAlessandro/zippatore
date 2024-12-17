@@ -17,8 +17,8 @@ void free_node(Node *n) {
 }
 
 int tree_spider(Node *current, char key, char *path, int level) {
-    if(current->key != key && current->left == NULL && current->right == NULL) return 0;
-    if(current->key == key && current->left == NULL && current->right == NULL){
+    if(current->key[0] != key && current->left == NULL && current->right == NULL) return 0;
+    if(current->key[0] == key && current->left == NULL && current->right == NULL){
         path[level] = '\0';
         return 1;
     }
@@ -49,7 +49,7 @@ void sort(Node *n, int start) {
 }
 
 Node build_binary_tree(Node *n) {
-    int start;
+    int start = 0;
     for(int i = 0; i < CHARSET; i++) {
         if(n[i].value <= 0) continue;
         start = i;
@@ -58,19 +58,19 @@ Node build_binary_tree(Node *n) {
     
     while(start < 127) {
         Node *left = (Node *) malloc(sizeof(Node));
-        left->key = n[start].key;
+        strcpy(left->key, n[start].key);
         left->value = n[start].value;
         left->left = n[start].left;
         left->right = n[start].right;
         Node *right = (Node *) malloc(sizeof(Node));
-        right->key = n[start + 1].key;
+        strcpy(right->key, n[start + 1].key);
         right->value = n[start + 1].value;
         right->left = n[start + 1].left;
         right->right = n[start + 1].right;
         
         Node new;
 
-        new.key = '\0';
+        strcpy(new.key, "\xde\xad\xbe\xef\0");
         new.value = left->value + right->value;
         new.left = left;
         new.right = right;
@@ -91,6 +91,7 @@ void compress(FILE *f, Node *t, char *filename) {
     int ch;
     char bits[9] = {'\0'};
 
+    int null_flag = 0;
     char cache_key[CHARSET];
     for(int c = 0; c < CHARSET; c++) cache_key[c] = '\0';
     char *cache_val[CHARSET];
@@ -100,13 +101,15 @@ void compress(FILE *f, Node *t, char *filename) {
         char actualChar = (char)ch;
 
         char *path = malloc(10);
-        if(cache_key[ch] != actualChar) {
+        if(cache_key[ch] != actualChar || (actualChar == '\0' && null_flag == 0)) {
             int level = 0;
             tree_spider(t, actualChar, path, level);
 
+            if(actualChar == '\0') null_flag = 1;
             cache_key[ch] = actualChar;
             cache_val[ch] = malloc(sizeof(char) * strlen(path));
             cache_val[ch] = path;
+
         } else {
             path = cache_val[ch];
         }
@@ -142,12 +145,20 @@ void serialize_wrapper(Node *t, FILE *f) {
     fprintf(f, "\n\n");
 }
 
+// TODO: Problema in fase di serializzazione o deserializzazione - Stampo deadbeef senza controllare
 void serialize(Node *root, FILE *file) {
     if (root == NULL) {
-        fprintf(file, "\2");
+        fprintf(file, "%c", '\0');
         return;
     }
-    fprintf(file, "%c", root->key);
+
+    if(!strcmp(root->key, "\xde\xad\xbe\xef")) {
+        fprintf(file, "%c", '\1');
+    } else {
+        fprintf(file, "%c", '\2');
+        fprintf(file, "%c", root->key[0]);
+    }
+    
     serialize(root->left, file);
     serialize(root->right, file);
 }
@@ -177,8 +188,8 @@ void decompress(FILE *f, Node *t, int padding, char *filename) {
     while ((next_next_char = fgetc(f)) != EOF) {
         for(int i = 0; i < 8; i++) {
             int bit = (currentByte >> (7 - i)) & 1;
-            if(current->key != '\0') {
-                fprintf(w, "%c", current->key);
+            if(strcmp(current->key, "\xde\xad\xbe\xef")) {
+                fprintf(w, "%c", current->key[0]);
                 current = !bit ? t->left : t->right;
                 continue;
             }
@@ -192,8 +203,8 @@ void decompress(FILE *f, Node *t, int padding, char *filename) {
 
     for(int i = 0; i < 8 - (padding - 1); i++) {
         int bit = (currentByte >> (7 - i)) & 1;
-        if(current->key != '\0') {
-            fprintf(w, "%c", current->key);
+        if(strcmp(current->key, "\xde\xad\xbe\xef")) {
+            fprintf(w, "%c", current->key[0]);
             current = !bit ? t->left : t->right;
             continue;
         }
@@ -204,17 +215,28 @@ void decompress(FILE *f, Node *t, int padding, char *filename) {
     fclose(w);
 }
 
+// TODO: Problema in fase di serializzazione o deserializzazione
 Node* deserialize(char **buffer) {
-    if (**buffer == '\2'){
+    if (**buffer == '\0'){
         (*buffer)++;
         return NULL;
-    }
+    } else if(**buffer == '\1') {
+        Node *node = (Node*)malloc(sizeof(Node));
+        strcpy(node->key, "\xde\xad\xbe\xef\0");
+        (*buffer)++;
+        node->left = deserialize(buffer);
+        node->right = deserialize(buffer);
 
-    Node *node = (Node*)malloc(sizeof(Node));
-    node->key = **buffer;
-    (*buffer)++;
-    node->left = deserialize(buffer);
-    node->right = deserialize(buffer);
-    return node;
+        return node;
+    } else {
+        (*buffer)++;
+        Node *node = (Node*)malloc(sizeof(Node));
+        node->key[0] = **buffer;
+        (*buffer)++;
+        node->left = deserialize(buffer);
+        node->right = deserialize(buffer);
+
+        return node;
+    }
 }
 

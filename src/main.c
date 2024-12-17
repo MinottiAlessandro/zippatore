@@ -55,13 +55,8 @@ int main(int argc, char* argv[]) {
         int ch;
         start = clock();
         while ((ch = fgetc(f)) != EOF) {
-
-            if(ch == 0 || ch == 2 || ch > 128) {
-                printf("Error: file contains 0x00, 0x02, or non ascii char\n");
-                return -1;
-            }
-
-            n[ch].key = (char) ch;
+            n[ch].key[0] = (char) ch;
+            n[ch].key[1] = '\0';
             n[ch].value++;
             n[ch].left = NULL;
             n[ch].right = NULL;
@@ -95,7 +90,7 @@ int main(int argc, char* argv[]) {
     } else if(option_d) { // Decompress
         char *buffer = malloc(BUFFER_SIZE);
         Node *bt;
-        
+
         start = clock();
         get_line(f, buffer);
         end = clock();
