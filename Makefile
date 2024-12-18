@@ -1,9 +1,9 @@
 # Compiler and flags
-CC = gcc                              # C compiler
-CXX = g++                             # C++ compiler
-CFLAGS = -Wall -Wextra -g            # C flags
-CXXFLAGS = -Wall -Wextra -g          # C++ flags
-LDFLAGS = -lm                        # Linking flags
+CC ?= gcc                             # C compiler
+CXX ?= g++                            # C++ compiler
+CFLAGS ?= -Wall -Wextra -g            # C flags
+CXXFLAGS ?= -Wall -Wextra -g          # C++ flags
+LDFLAGS ?= -lm                        # Linking flags
 
 # Directories
 SRC_DIR = src
