@@ -55,6 +55,11 @@ int main(int argc, char* argv[]) {
         int ch;
         start = clock();
         while ((ch = fgetc(f)) != EOF) {
+            if(ch > 127) {
+                fclose(f);
+                printf("Error: file contains non-ASCII characters\n");
+                return -1;
+            }
             n[ch].key[0] = (char) ch;
             n[ch].key[1] = '\0';
             n[ch].value++;
