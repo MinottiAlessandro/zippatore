@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #define OPEN_FILE_ERR_MSG "Opening file\n"
+#define BUFFER_SIZE 1024
 
 void appendBitsToFile(char *bits, FILE *file) {
   unsigned char byte = 0;
@@ -46,13 +47,7 @@ int readBit(FILE *file) {
   return bit;
 }
 
-#define BUFFER_SIZE 1024
 void get_line(FILE *file, char *buffer) {
-  if (file == NULL) {
-    perror(OPEN_FILE_ERR_MSG);
-    return;
-  }
-
   int index = 0;
   int prev_char = 0;
   int curr_char = 0;
@@ -60,9 +55,8 @@ void get_line(FILE *file, char *buffer) {
   while ((curr_char = fgetc(file)) != EOF && index < BUFFER_SIZE - 1) {
     buffer[index++] = curr_char;
 
-    if (prev_char == '\n' && curr_char == '\n') {
+    if (prev_char == '\n' && curr_char == '\n')
       break;
-    }
 
     prev_char = curr_char;
   }
