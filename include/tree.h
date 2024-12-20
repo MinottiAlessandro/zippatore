@@ -3,10 +3,10 @@
 #include <stdio.h>
 
 typedef struct Node {
-    struct Node *left;
-    struct Node *right;
-    char key[5];
-    int value;
+  struct Node *left;
+  struct Node *right;
+  char key[5];
+  int value;
 } Node;
 
 /**
@@ -19,15 +19,15 @@ int tree_spider(Node *current, char key, char *path, int level);
 
 Node build_binary_tree(Node *n);
 
-void compress(FILE *f, Node *t, char *filename);
+int compress(FILE *f, Node *t, char *filename);
 
 void serialize_wrapper(Node *t, FILE *f);
 
 void serialize(Node *root, FILE *file);
 
-void decompress(FILE *f, Node *t, int padding, char *filename);
+int decompress(FILE *f, Node *t, int padding, char *filename);
 
-Node* deserialize(char **buffer);
+Node *deserialize(char **buffer);
 
 void free_nodes(Node n);
 

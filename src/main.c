@@ -9,15 +9,16 @@
 
 #define BUFFER_SIZE 1024
 #define CHARSET 128
-#define OPTSTR "vc:f:"
+#define OPTSTR "vc:d:"
 #define TOT_EXEC_TME_MSG "\nTotal execution time - %f seconds\n"
 #define UNEXPECTED_OPT_ERR_MSG "Unexpected parameter.\n"
 #define MUTUAL_OPT_ERR_MSG "Only one of the -c or -d can be active.\n"
 #define MANDATORY_OPT_ERR_MSG "One of -c or -d must be active.\n"
 #define FILENAME_OPT_ERR_MSG "Filename not provided.\n"
-#define UNKNOWN_OPT_MSG "Unknown option found will be ignored.\n"
 #define NON_ASCII_ERR_MSG "File contains non-ASCII characters\n"
-#define ONLY_ONE_CHAR_ERROR_MSG "File contains only 1 type of char\n"
+#define ONLY_ONE_CHAR_ERR_MSG "File contains only 1 type of char\n"
+#define OPEN_FILE_ERR_MSG "Opening file\n"
+#define UNKNOWN_OPT_ERR_MSG "Unknown option, stop execution\n"
 
 typedef struct {
   u_int8_t verbose;
@@ -55,6 +56,7 @@ int main(int argc, char *argv[]) {
       break;
     default:
       options.unknown += 1;
+      break;
     }
   }
 
@@ -62,7 +64,11 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
 
   start = clock();
-  FILE *f = open_file(options.filename, "rb");
+  FILE *f;
+  if ((f = fopen(options.filename, "rb")) == NULL) {
+    perror(OPEN_FILE_ERR_MSG);
+    exit(EXIT_FAILURE);
+  }
   end = clock();
   if (options.verbose)
     total_execution_time += execution_time(start, end, "Opening file");
@@ -76,15 +82,20 @@ int main(int argc, char *argv[]) {
   if (options.verbose)
     printf(TOT_EXEC_TME_MSG, total_execution_time);
 
+  fclose(f);
+
   if (res == -1)
     exit(EXIT_FAILURE);
-
-  fclose(f);
 
   return 0;
 }
 
 int validate_options(options_t *options) {
+  if (options->unknown) {
+    perror(UNKNOWN_OPT_ERR_MSG);
+    return -1;
+  }
+
   if (options->compress && options->decompress) {
     perror(MUTUAL_OPT_ERR_MSG);
     return -1;
@@ -98,10 +109,6 @@ int validate_options(options_t *options) {
   if (options->filename == NULL) {
     perror(FILENAME_OPT_ERR_MSG);
     return -1;
-  }
-
-  if (options->unknown) {
-    printf(UNKNOWN_OPT_MSG);
   }
 
   return 0;
@@ -146,7 +153,7 @@ int compress_opt(options_t *options, FILE *f) {
     total_execution_time += execution_time(start, end, "Sorting tree");
 
   if (n[CHARSET - 2].value == 0) {
-    perror(ONLY_ONE_CHAR_ERROR_MSG);
+    perror(ONLY_ONE_CHAR_ERR_MSG);
     return -1;
   }
 
@@ -157,7 +164,9 @@ int compress_opt(options_t *options, FILE *f) {
     total_execution_time += execution_time(start, end, "Building binary tree");
 
   start = clock();
-  compress(f, &bt, options->filename);
+  if (compress(f, &bt, options->filename) == -1)
+    return -1;
+
   end = clock();
   if (options->verbose)
     total_execution_time += execution_time(start, end, "Compressing file");
@@ -189,7 +198,8 @@ int decompress_opt(options_t *options, FILE *f) {
         execution_time(start, end, "Deserialize BinaryTree");
 
   start = clock();
-  decompress(f, bt, bit_padding, options->filename);
+  if (decompress(f, bt, bit_padding, options->filename) == -1)
+    return -1;
   end = clock();
   if (options->verbose)
     total_execution_time += execution_time(start, end, "Decompression");
