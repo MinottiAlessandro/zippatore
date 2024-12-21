@@ -106,7 +106,7 @@ Node build_binary_tree(Node *n) {
 int compress_old(FILE *f, Node *t, char *filename) {
   FILE *w;
   if ((w = fopen(strcat(filename, ".zippatore"), "wb")) == NULL) {
-    perror(OPEN_FILE_ERR_MSG);
+    printf(OPEN_FILE_ERR_MSG);
     return -1;
   }
   int ch;
@@ -175,7 +175,7 @@ int compress(FILE *f, Node *t, char *filename) {
   snprintf(output_filename, PATH_BUFFER_SIZE, "%s.zippatore", filename);
   FILE *w = fopen(output_filename, "wb");
   if (!w) {
-    perror(OPEN_FILE_ERR_MSG);
+    printf(OPEN_FILE_ERR_MSG);
     return -1;
   }
 
@@ -306,7 +306,7 @@ int decompress_old(FILE *f, Node *t, int padding, char *filename) {
     *extension = '\0';
   FILE *w;
   if ((w = fopen(filename, "w")) == NULL) {
-    perror(OPEN_FILE_ERR_MSG);
+    printf(OPEN_FILE_ERR_MSG);
     return -1;
   }
   while ((next_next_char = fgetc(f)) != EOF) {
@@ -373,7 +373,7 @@ int decompress(FILE *f, Node *t, int padding, char *filename) {
 
   FILE *w = fopen(filename, "w");
   if (w == NULL) {
-    perror(OPEN_FILE_ERR_MSG);
+    printf(OPEN_FILE_ERR_MSG);
     return -1;
   }
 

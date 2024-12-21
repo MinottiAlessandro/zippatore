@@ -11,20 +11,19 @@
 #define CHARSET 128
 #define OPTSTR "vc:d:"
 #define TOT_EXEC_TME_MSG "\nTotal execution time - %f seconds\n"
-#define UNEXPECTED_OPT_ERR_MSG "Unexpected parameter.\n"
-#define MUTUAL_OPT_ERR_MSG "Only one of the -c or -d can be active.\n"
-#define MANDATORY_OPT_ERR_MSG "One of -c or -d must be active.\n"
-#define FILENAME_OPT_ERR_MSG "Filename not provided.\n"
-#define NON_ASCII_ERR_MSG "File contains non-ASCII characters\n"
-#define ONLY_ONE_CHAR_ERR_MSG "File contains only 1 type of char\n"
-#define OPEN_FILE_ERR_MSG "Opening file\n"
-#define UNKNOWN_OPT_ERR_MSG "Unknown option, stop execution\n"
+#define UNEXPECTED_OPT_ERR_MSG "Error: Unexpected parameter.\n"
+#define MUTUAL_OPT_ERR_MSG "Error: Only one of the -c or -d can be active.\n"
+#define MANDATORY_OPT_ERR_MSG "Error: One of -c or -d must be active.\n"
+#define FILENAME_OPT_ERR_MSG "Error: Filename not provided.\n"
+#define NON_ASCII_ERR_MSG "Error: File contains non-ASCII characters\n"
+#define ONLY_ONE_CHAR_ERR_MSG "Error: File contains only 1 type of char\n"
+#define OPEN_FILE_ERR_MSG "Error: Could not open file\n"
+#define UNKNOWN_OPT_ERR_MSG "Error: Unknown option, stop execution\n"
 
 typedef struct {
   u_int8_t verbose;
   u_int8_t compress;
   u_int8_t decompress;
-  u_int8_t unknown;
   char *filename;
 } options_t;
 
@@ -39,7 +38,7 @@ int decompress_opt(options_t *options, FILE *f);
 
 int main(int argc, char *argv[]) {
   int opt;
-  options_t options = {0, 0, 0, 0, NULL};
+  options_t options = {0, 0, 0, NULL};
 
   while ((opt = getopt(argc, argv, OPTSTR)) != EOF) {
     switch (opt) {
@@ -47,15 +46,12 @@ int main(int argc, char *argv[]) {
       options.verbose += 1;
       break;
     case 'c':
-      options.filename = optarg;
       options.compress += 1;
+      options.filename = optarg;
       break;
     case 'd':
-      options.filename = optarg;
       options.decompress += 1;
-      break;
-    default:
-      options.unknown += 1;
+      options.filename = optarg;
       break;
     }
   }
@@ -66,7 +62,7 @@ int main(int argc, char *argv[]) {
   start = clock();
   FILE *f;
   if ((f = fopen(options.filename, "rb")) == NULL) {
-    perror(OPEN_FILE_ERR_MSG);
+    printf(OPEN_FILE_ERR_MSG);
     exit(EXIT_FAILURE);
   }
   end = clock();
@@ -91,23 +87,18 @@ int main(int argc, char *argv[]) {
 }
 
 int validate_options(options_t *options) {
-  if (options->unknown) {
-    perror(UNKNOWN_OPT_ERR_MSG);
+  if ((options->compress || options->decompress) && options->filename == NULL) {
+    printf(FILENAME_OPT_ERR_MSG);
     return -1;
   }
 
   if (options->compress && options->decompress) {
-    perror(MUTUAL_OPT_ERR_MSG);
+    printf(MUTUAL_OPT_ERR_MSG);
     return -1;
   }
 
   if (!options->compress && !options->decompress) {
-    perror(MANDATORY_OPT_ERR_MSG);
-    return -1;
-  }
-
-  if (options->filename == NULL) {
-    perror(FILENAME_OPT_ERR_MSG);
+    printf(MANDATORY_OPT_ERR_MSG);
     return -1;
   }
 
@@ -130,7 +121,7 @@ int compress_opt(options_t *options, FILE *f) {
   start = clock();
   while ((ch = fgetc(f)) != EOF) {
     if (ch > 127) {
-      perror(NON_ASCII_ERR_MSG);
+      printf(NON_ASCII_ERR_MSG);
       return -1;
     }
     n[ch].key[0] = (char)ch;
@@ -153,7 +144,7 @@ int compress_opt(options_t *options, FILE *f) {
     total_execution_time += execution_time(start, end, "Sorting tree");
 
   if (n[CHARSET - 2].value == 0) {
-    perror(ONLY_ONE_CHAR_ERR_MSG);
+    printf(ONLY_ONE_CHAR_ERR_MSG);
     return -1;
   }
 
