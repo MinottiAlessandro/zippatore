@@ -9,6 +9,7 @@
 #define BUFFER_SIZE 8192
 #define OUTPUT_BUFFER_SIZE 16384
 #define PATH_BUFFER_SIZE 256
+#define DEADBEEF "\xde\xad\xbe\xef"
 
 void free_nodes(Node n) {
   free_node(n.left);
@@ -281,7 +282,7 @@ void serialize(Node *root, FILE *file) {
   serialize(root->right, file);
 }
 
-int decompress(FILE *f, Node *t, int padding, char *filename) {
+int decompress_old(FILE *f, Node *t, int padding, char *filename) {
   rewind(f);
 
   int prev_char = 0;
@@ -338,6 +339,99 @@ int decompress(FILE *f, Node *t, int padding, char *filename) {
       current = current->left;
     else
       current = current->right;
+  }
+
+  fclose(w);
+  return 0;
+}
+int decompress(FILE *f, Node *t, int padding, char *filename) {
+  // Find double newline to skip header
+  rewind(f);
+  int prev_char = 0;
+  int curr_char;
+
+  // Skip header
+  while ((curr_char = fgetc(f)) != EOF) {
+    if (prev_char == '\n' && curr_char == '\n') {
+      break;
+    }
+    prev_char = curr_char;
+  }
+
+  // Read initial bytes
+  curr_char = fgetc(f);
+  int next_char = fgetc(f);
+  if (curr_char == EOF || next_char == EOF) {
+    return -1;
+  }
+
+  // Setup output file
+  char *extension = strstr(filename, ".zippatore");
+  if (extension != NULL) {
+    *extension = '\0';
+  }
+
+  FILE *w = fopen(filename, "w");
+  if (w == NULL) {
+    perror(OPEN_FILE_ERR_MSG);
+    return -1;
+  }
+
+  // Output buffer to reduce writes
+  char output_buffer[BUFFER_SIZE];
+  size_t output_pos = 0;
+
+  char currentByte = (char)curr_char;
+  Node *current = t;
+  int next_next_char;
+
+  // Main decompression loop
+  while ((next_next_char = fgetc(f)) != EOF) {
+    // Process all 8 bits of the current byte
+    for (int i = 0; i < 8; i++) {
+      int bit = (currentByte >> (7 - i)) & 1;
+
+      // Check if we've reached a leaf node
+      if (strcmp(current->key, DEADBEEF) != 0) {
+        output_buffer[output_pos++] = current->key[0];
+        current = bit ? t->right : t->left;
+
+        // Flush buffer if full
+        if (output_pos >= BUFFER_SIZE) {
+          fwrite(output_buffer, 1, output_pos, w);
+          output_pos = 0;
+        }
+      } else {
+        current = bit ? current->right : current->left;
+      }
+    }
+
+    // Move to next byte
+    currentByte = (char)next_char;
+    next_char = next_next_char;
+  }
+
+  // Process final byte with padding
+  int final_bits = 8 - (padding - 1);
+  for (int i = 0; i < final_bits; i++) {
+    int bit = (currentByte >> (7 - i)) & 1;
+
+    if (strcmp(current->key, DEADBEEF) != 0) {
+      output_buffer[output_pos++] = current->key[0];
+      current = bit ? t->right : t->left;
+
+      if (output_pos >= BUFFER_SIZE) {
+        fwrite(output_buffer, 1, output_pos, w);
+        output_pos = 0;
+      }
+    } else {
+      current = bit ? current->right : current->left;
+    }
+  }
+
+  // Flush any remaining output
+  if (output_pos > 0) {
+    fwrite(output_buffer, 1, output_pos, w);
   }
 
   fclose(w);

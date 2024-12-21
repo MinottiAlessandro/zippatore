@@ -27,6 +27,8 @@ void serialize_wrapper(Node *t, FILE *f);
 
 void serialize(Node *root, FILE *file);
 
+int decompress_old(FILE *f, Node *t, int padding, char *filename);
+
 int decompress(FILE *f, Node *t, int padding, char *filename);
 
 Node *deserialize(char **buffer);
