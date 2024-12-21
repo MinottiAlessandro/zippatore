@@ -151,10 +151,10 @@ int compress(FILE *f, Node *t, char *filename) {
   if (strlen(bits) > 0) {
     appendBitsToFile(bits, w);
     char padding[] = {(8 - strlen(bits)) + '0', '\0'};
-    fprintf(w, padding);
+    fprintf(w, "%s", padding);
   } else {
     char padding[] = {'0', '\0'};
-    fprintf(w, padding);
+    fprintf(w, "%s", padding);
   }
 
   fclose(w);
