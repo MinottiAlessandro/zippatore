@@ -6,6 +6,9 @@
 
 #define CHARSET 128
 #define OPEN_FILE_ERR_MSG "Opening file\n"
+#define BUFFER_SIZE 8192
+#define OUTPUT_BUFFER_SIZE 16384
+#define PATH_BUFFER_SIZE 256
 
 void free_nodes(Node n) {
   free_node(n.left);
@@ -99,7 +102,7 @@ Node build_binary_tree(Node *n) {
   return n[127];
 }
 
-int compress(FILE *f, Node *t, char *filename) {
+int compress_old(FILE *f, Node *t, char *filename) {
   FILE *w;
   if ((w = fopen(strcat(filename, ".zippatore"), "wb")) == NULL) {
     perror(OPEN_FILE_ERR_MSG);
@@ -120,8 +123,7 @@ int compress(FILE *f, Node *t, char *filename) {
 
     char *path = malloc(10);
     if (cache_key[ch] != actualChar || (actualChar == '\0' && null_flag == 0)) {
-      int level = 0;
-      tree_spider(t, actualChar, path, level);
+      tree_spider(t, actualChar, path, 0);
 
       if (actualChar == '\0')
         null_flag = 1;
@@ -155,6 +157,102 @@ int compress(FILE *f, Node *t, char *filename) {
   } else {
     char padding[] = {'0', '\0'};
     fprintf(w, "%s", padding);
+  }
+
+  fclose(w);
+  return 0;
+}
+
+int compress(FILE *f, Node *t, char *filename) {
+  // Pre-allocate buffers on stack
+  char output_filename[PATH_BUFFER_SIZE];
+  char read_buffer[BUFFER_SIZE];
+  unsigned char output_buffer[OUTPUT_BUFFER_SIZE];
+  size_t output_pos = 0;
+
+  // Prepare output file
+  snprintf(output_filename, PATH_BUFFER_SIZE, "%s.zippatore", filename);
+  FILE *w = fopen(output_filename, "wb");
+  if (!w) {
+    perror(OPEN_FILE_ERR_MSG);
+    return -1;
+  }
+
+  // Initialize cache with static allocation
+  static char cache_key[CHARSET] = {0};
+  static char *cache_val[CHARSET] = {0};
+  static char path_buffer[PATH_BUFFER_SIZE] = {0};
+
+  // Write tree structure first
+  serialize_wrapper(t, w);
+
+  // Bit accumulator
+  unsigned char bits_buffer = 0;
+  int bits_count = 0;
+  int null_flag = 0;
+
+  // Process file in chunks
+  size_t bytes_read;
+  while ((bytes_read = fread(read_buffer, 1, BUFFER_SIZE, f)) > 0) {
+    for (size_t i = 0; i < bytes_read; i++) {
+      unsigned char ch = (unsigned char)read_buffer[i];
+      const char *path;
+
+      // Cache lookup and update
+      if (cache_key[ch] != ch || (ch == '\0' && !null_flag)) {
+        tree_spider(t, ch, path_buffer, 0);
+        if (ch == '\0') {
+          null_flag = 1;
+        }
+
+        // Update cache
+        cache_key[ch] = ch;
+        size_t path_len = strlen(path_buffer) + 1;
+        char *new_path = realloc(cache_val[ch], path_len);
+        if (new_path) {
+          cache_val[ch] = new_path;
+          memcpy(cache_val[ch], path_buffer, path_len);
+        }
+        path = path_buffer;
+      } else {
+        path = cache_val[ch];
+      }
+
+      // Process path bits
+      for (const char *p = path; *p; p++) {
+        bits_buffer = (bits_buffer << 1) | (*p == '1');
+        bits_count++;
+
+        if (bits_count == 8) {
+          output_buffer[output_pos++] = bits_buffer;
+          if (output_pos >= OUTPUT_BUFFER_SIZE) {
+            fwrite(output_buffer, 1, output_pos, w);
+            output_pos = 0;
+          }
+          bits_buffer = 0;
+          bits_count = 0;
+        }
+      }
+    }
+  }
+
+  // Handle remaining bits
+  if (bits_count > 0) {
+    bits_buffer <<= (8 - bits_count);
+    output_buffer[output_pos++] = bits_buffer;
+  }
+
+  // Flush remaining output buffer
+  if (output_pos > 0) {
+    fwrite(output_buffer, 1, output_pos, w);
+  }
+
+  // Write padding information
+  fputc(bits_count ? ('0' + (8 - bits_count)) : '0', w);
+
+  // Cleanup
+  for (int i = 0; i < CHARSET; i++) {
+    free(cache_val[i]);
   }
 
   fclose(w);

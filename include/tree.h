@@ -19,6 +19,8 @@ int tree_spider(Node *current, char key, char *path, int level);
 
 Node build_binary_tree(Node *n);
 
+int compress_old(FILE *f, Node *t, char *filename);
+
 int compress(FILE *f, Node *t, char *filename);
 
 void serialize_wrapper(Node *t, FILE *f);
