@@ -143,11 +143,6 @@ int compress_opt(options_t *options, FILE *f) {
   if (options->verbose)
     total_execution_time += execution_time(start, end, "Sorting tree");
 
-  if (n[CHARSET - 2].value == 0) {
-    printf(ONLY_ONE_CHAR_ERR_MSG);
-    return -1;
-  }
-
   start = clock();
   Node bt = build_binary_tree(n);
   end = clock();
