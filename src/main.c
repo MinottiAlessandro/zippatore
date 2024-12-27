@@ -9,7 +9,7 @@
 
 #define BUFFER_SIZE 1024
 #define CHARSET 128
-#define OPTSTR "vc:d:"
+#define OPTSTR "vc:d:r:"
 #define TOT_EXEC_TME_MSG "\nTotal execution time - %f seconds\n"
 #define UNEXPECTED_OPT_ERR_MSG "Error: Unexpected parameter.\n"
 #define MUTUAL_OPT_ERR_MSG "Error: Only one of the -c or -d can be active.\n"
@@ -19,12 +19,15 @@
 #define ONLY_ONE_CHAR_ERR_MSG "Error: File contains only 1 type of char\n"
 #define OPEN_FILE_ERR_MSG "Error: Could not open file\n"
 #define UNKNOWN_OPT_ERR_MSG "Error: Unknown option, stop execution\n"
+#define FOLDER_OPT_ERR_MSG "Error: Folder name not provided\n"
 
 typedef struct {
   u_int8_t verbose;
   u_int8_t compress;
   u_int8_t decompress;
+  u_int8_t recursive;
   char *filename;
+  char *folder;
 } options_t;
 
 clock_t start;
@@ -35,23 +38,28 @@ int validate_options(options_t *options);
 double execution_time(clock_t start, clock_t end, char *msg);
 int compress_opt(options_t *options, FILE *f);
 int decompress_opt(options_t *options, FILE *f);
+int recursive_opt(options_t *options, FILE *f);
 
 int main(int argc, char *argv[]) {
   int opt;
-  options_t options = {0, 0, 0, NULL};
+  options_t options = {0, 0, 0, 0, NULL};
 
   while ((opt = getopt(argc, argv, OPTSTR)) != EOF) {
     switch (opt) {
     case 'v':
-      options.verbose += 1;
+      options.verbose = 1;
       break;
     case 'c':
-      options.compress += 1;
+      options.compress = 1;
       options.filename = optarg;
       break;
     case 'd':
-      options.decompress += 1;
+      options.decompress = 1;
       options.filename = optarg;
+      break;
+    case 'r':
+      options.recursive = 1;
+      options.folder = optarg;
       break;
     }
   }
@@ -74,6 +82,8 @@ int main(int argc, char *argv[]) {
     res = compress_opt(&options, f);
   if (options.decompress)
     res = decompress_opt(&options, f);
+  if (options.recursive)
+    res = recursive_opt(&options, f);
 
   if (options.verbose)
     printf(TOT_EXEC_TME_MSG, total_execution_time);
@@ -87,17 +97,24 @@ int main(int argc, char *argv[]) {
 }
 
 int validate_options(options_t *options) {
+  int options_sum =
+      options->compress + options->decompress + options->recursive;
+
   if ((options->compress || options->decompress) && options->filename == NULL) {
     printf(FILENAME_OPT_ERR_MSG);
     return -1;
   }
+  if (options->recursive && options->folder == NULL) {
+    printf(FOLDER_OPT_ERR_MSG);
+    return -1;
+  }
 
-  if (options->compress && options->decompress) {
+  if (options_sum > 1) {
     printf(MUTUAL_OPT_ERR_MSG);
     return -1;
   }
 
-  if (!options->compress && !options->decompress) {
+  if (!options_sum) {
     printf(MANDATORY_OPT_ERR_MSG);
     return -1;
   }
@@ -192,3 +209,5 @@ int decompress_opt(options_t *options, FILE *f) {
 
   return 0;
 }
+
+int recursive_opt(options_t *options, FILE *f) { return 0; }
