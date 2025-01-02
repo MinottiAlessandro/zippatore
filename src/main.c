@@ -42,7 +42,7 @@ int recursive_opt(options_t *options, FILE *f);
 
 int main(int argc, char *argv[]) {
   int opt;
-  options_t options = {0, 0, 0, 0, NULL};
+  options_t options = {0, 0, 0, 0, NULL, NULL};
 
   while ((opt = getopt(argc, argv, OPTSTR)) != EOF) {
     switch (opt) {
